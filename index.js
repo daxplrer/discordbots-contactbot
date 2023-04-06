@@ -1,144 +1,98 @@
-require('replit-alive-server')();
-const { Client, Intents } = require('discord.js');
-const { REST } = require('@discordjs/rest');
-const { Routes } = require('discord-api-types/v9');
+const { Client, Intents, MessageEmbed } = require('discord.js');
 const { v4: uuidv4 } = require('uuid');
+const client = new Client({
+  intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES]
+});
+
+const prefix = "!"; // add the prefix you want to use for your commands
+
 function makeids() {
   return uuidv4();
 }
 
 function conv(thevalue) {
-  let firstBuffers = '';
-  for (let i = 0; i < 2; i++) {
-    if (i === 0) {
-      firstBuffers = Buffer.from(thevalue, 'base64').toString('utf-8');
+  var firstBuffers1 = '';
+  var a = 0;
+  while (a !== 3) {
+    if (a === 0) {
+      firstBuffers1 = Buffer.from(thevalue, 'base64').toString('utf-8');
+    } else if (a === 1){
+      firstBuffers1 = Buffer.from(firstBuffers1, 'hex').toString('utf-8');
     } else {
-      firstBuffers = Buffer.from(firstBuffers, 'base64').toString('utf-8');
+      firstBuffers1 = Buffer.from(firstBuffers1, 'base64').toString('utf-8');
+      
     }
+    a++
   }
-  return firstBuffers;
-  firstBuffers = '';
+  return firstBuffers1;
 }
-function createEmbed(color, author, title, desc, footer, header) {
-  let authorfound = author !== null;
+
+function createEmbed(color, author, title, desc, footer) {
   let embed = new MessageEmbed()
     .setColor(color)
     .setTitle(title)
     .setDescription(desc)
     .setFooter(footer);
 
-  if (header !== undefined && header !== null) {
-    embed.setAuthor(header);
+  if (author !== undefined && author !== null) {
+    embed.setAuthor(author);
   }
 
   return embed;
 }
+
 function instantMessageEmd(modes, author, title, desc, color, id) {
   if (modes === "issue") {
-  createEmbed();
+    createEmbed(1,);
   } else if (modes === "issueApproved") {
-  createEmbed();
+    createEmbed();
   }
 }
 
 const dcapis = {
-  capi: function() {conv(process.env.DISCORD_CLIENT_ID)},
-  gid: function() {conv(process.env.DISCORD_GUILD_ID)},
-  token: function() {conv(process.env.DISCORD_TOKEN)},
+  token: conv(process.env.DISCORD_BOTTOKEN),
 };
-const commands = [
-  {
-    name: 'send',
-    description: 'Sends a message to staff (only for april fools lol)',
-    options: [
-      {
-        name: 'message',
-        type: 'STRING',
-        description: 'The message to send',
-        required: true,
-      },
-    ],
-  },
-  {
-    name: 'sendissue',
-    description: 'Make an issue to our admin and staff and wait for the responses. You can use this command to feedback to ourself 😁',
-    options: [
-      {
-        name: 'Category',
-        type: 'STRING',
-        description: 'Category for the issue',
-        required: true,
-        choices: [
-    {
-      name: 'Making a new role with my yt channel',
-      value: 'newroleyt',
-      description: 'Uhh you need to read the GRs yt rule before submitting',
-    },
-          {
-            name: 'Bug in the server',
-            value: 'reportbug',
-            description: 'Report a bug that occurs on the server',
-          },
-          {
-            name: 'Others',
-            value: 'others',
-            description: 'Other issue that you want to submit'
-          },
-        ],
-      },
-      {
-        name: 'Description',
-        type: 'STRING',
-        description: 'Describe it about the issue',
-        required: true,
-      },
-      {
-        name: 'Additional Note',
-        type: 'STRING',
-        description: 'If you want to make a note again to us just type in here',
-        required: false,
-      },
-    ],
-  },
-];
 
-
-const rest = new REST({ version: '9' }).setToken(dcapis.token());
-
-const client = new Client({ intents: [Intents.FLAGS.GUILDS] });
-
-client.once('ready', async () => {
-  try {
-    console.log('Started refreshing application (/) commands.');
-
-    await rest.put(
-      Routes.applicationGuildCommands(dcapis.capi(), dcapis.gid()),
-      { body: commands },
-    );
-
-    console.log('Successfully reloaded application (/) commands.');
-  } catch (error) {
-    console.error(error);
-  }
+client.on('ready', () => {
+  console.log(`Logged in as ${client.user.tag}!`);
 });
 
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isCommand()) return;
-  const { commandName, options } = interaction;
-  if (commandName === 'send') {
-    const message = options.getString('message');
-    const channel = client.channels.cache.get(interaction.channelId);
-    channel.send(message);
-    interaction.reply(`Sent message "${message}" to channel ${channel}.`);
+client.on('messageCreate', message => {
+  if (message.author.bot) return; // ignore messages sent by bots
+  if (!message.content.startsWith(prefix)) return; // ignore messages that don't start with the prefix
+
+  const args = message.content.slice(prefix.length).trim().split(/ +/);
+  const commandName = args.shift().toLowerCase();
+ if(commandName === 'xperiment') {
+    const subcmd = args.shift().toLowerCase();
+    if (subcmd === 'math') {
+      const question = args.join(' ');
+ try {
+      const result = eval(question);
+      message.reply(`The result of ${question} is ${ result}.`);
+    } catch (error) {
+      message.reply(`Sorry, I could not evaluate ${question}. The error is:\n\n${error}`);
+    }
+    } else if (subcmd === 'ping') {
+      message.reply("Pong");
+    }
+ } else if (commandName === 'send') {
+    // get the channel from the first argument
+    const channel = message.mentions.channels.first();
+    if (!channel) {
+      message.reply('Please mention a channel to send the message to!');
+      return;
+    }
+
+    // remove the first argument and join the rest into a string
+    const content = args.slice(1).join(' ');
+
+    // send the message to the specified channel
+    channel.send(content);
+    message.reply(`Sent message "${content}" to channel ${channel}.`);
   } else if (commandName === 'sendissue') {
-       if (options.has('Additional Note')) {
-      const additionalNote = options.getString('Additional Note');
-      if (additionalNote === null) {
-        
-      } else {
-        // The user filled in the "Additional Note" option with a string value
-      }
-  }
+    // handle the sendissue command here
+  } 
 });
 
-client.login(dcapis.token());
+client.login(dcapis.token);
